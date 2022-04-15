@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 
 
 def claim_classification(model, size):
-    assert model in ["hgc", "han"]
+    assert model in ["hgs", "han"]
     assert size in ["small", "medium", "large"]
 
-    if model == "hgc":
+    if model == "hgs":
         scores = train_graph_model(task='claim', size=size)
     else:  # model == "han"
         pass  # TODO
