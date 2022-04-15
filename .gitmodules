@@ -1,0 +1,3 @@
+[submodule "src/mumin-baseline"]
+	path = src/mumin-baseline
+	url = git@github.com:MuMiN-dataset/mumin-baseline.git
