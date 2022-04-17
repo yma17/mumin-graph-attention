@@ -1,5 +1,5 @@
 #PBS -N claim_hgs                 # job name
-#PBS -l nodes=1:ppn=4:nvidiagpu         # number of nodes and cores per node required
+#PBS -l nodes=1:ppn=6:gpus=1         # number of nodes and cores per node required
 #PBS -l pmem=16gb                        # memory per core
 #PBS -l walltime=2:00:00               # duration of the job (ex: 15 min)
 #PBS -q coc-ice-gpu                     # queue name (where job is submitted)
@@ -8,6 +8,9 @@
 #PBS -m abe                             # event notification, set to email on start, end, or fail
 #PBS -M yma473@gatech.edu               # email to send notifications to
 
-cd ../scripts                       # enter directory where PBS Script is
-module load anaconda3/2019.10           # loads python environment (anaconda)
+cd $PBS_O_WORKDIR                       # enter directory where PBS Script is
+cd ../scripts/
+module load anaconda3/2021.05           # loads python environment (anaconda)
+module load cuda/10.2
+conda activate mumin_env
 python claim_classification.py --model hgs --size small                # runs parallel python script  
