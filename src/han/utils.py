@@ -8,6 +8,7 @@ import random
 import torch
 
 from dgl.data.utils import download, get_download_dir, _get_dgl_url
+from mumin import load_dgl_graph, save_dgl_graph
 from pprint import pprint
 from scipy import sparse
 from scipy import io as sio
@@ -219,11 +220,41 @@ def load_acm_raw(remove_self_loop):
     return hg, features, labels, num_classes, train_idx, val_idx, test_idx, \
             train_mask, val_mask, test_mask
 
+def load_mumin(remove_self_loop):
+    graph = load_dgl_graph('/srv/share/aagarwal437/mumin-graph-attention/dgl-graph-small.bin')
+    print("Claim feature shape", graph.nodes['claim'].data['feat'].shape)
+
+    feat_dict = {}
+
+    node_types = ['article', 'claim', 'hashtag', 'image', 'reply', 'tweet', 'user']
+
+    for node_type in node_types:
+        feat_dict[node_type] = graph.nodes[node_type].data['feat']
+
+    metapath_list = [['tweet', 'claim', 'tweet'], ['tweet', 'hashtag', 'tweet'], ['user', 'hashtag', 'user'], 
+                ['reply', 'tweet', 'claim'], ['article', 'tweet', 'claim'], ['user', 'tweet', 'user'], ['tweet', 'user', 'tweet'],
+                ['user', 'tweet', 'claim']]
+
+    num_classes = 2
+   
+    train_mask = graph.nodes['claim'].data['train_mask'].bool()
+    val_mask = graph.nodes['claim'].data['val_mask'].bool()
+    test_mask = graph.nodes['claim'].data['test_mask'].bool()
+
+    # train_nids = {task: node_enum[train_mask].int()}
+    # val_nids = {task: node_enum[val_mask].int()}
+    # test_nids = {task: node_enum[test_mask].int()}
+
+    return graph, feat_dict, labels, num_classes, train_idx, val_idx, test_idx, \
+            train_mask, val_mask, test_mask
+
 def load_data(dataset, remove_self_loop=False):
     if dataset == 'ACM':
         return load_acm(remove_self_loop)
     elif dataset == 'ACMRaw':
         return load_acm_raw(remove_self_loop)
+    elif dataset == 'mumin':
+        return load_mumin(remove_self_loop)
     else:
         return NotImplementedError('Unsupported dataset {}'.format(dataset))
 
