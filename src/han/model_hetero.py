@@ -80,26 +80,58 @@ class HANLayer(nn.Module):
                 self._cached_coalesced_graph[meta_path] = dgl.metapath_reachable_graph(
                         g, meta_path)
 
+        # Step 1: node-level attention via GAT
         for i, meta_path in enumerate(self.meta_paths):
             new_g = self._cached_coalesced_graph[meta_path]
             semantic_embeddings.append(self.gat_layers[i](new_g, h).flatten(1))
         semantic_embeddings = torch.stack(semantic_embeddings, dim=1)                  # (N, M, D * K)
 
+        # Step 2: semantic-level attention
         return self.semantic_attention(semantic_embeddings)                            # (N, D * K)
 
 class HAN(nn.Module):
-    def __init__(self, meta_paths, in_size, hidden_size, out_size, num_heads, dropout):
+    def __init__(self, meta_paths, in_sizes, proj_size, hidden_size, out_size, num_heads, dropout):
+        """
+        meta_paths: list of metapaths
+        in_sizes: dictionary mapping node types to dimensionality
+        proj_size: dimensionality of all nodes after projection
+        hidden_size: dimensionality of semantic-specific node embedding
+        out_size: dimensionality of output, typically number of classes
+        num_heads: number of attn heads for node attention GATs
+        dropout: dropout for node attention GATs
+        """
+        
         super(HAN, self).__init__()
 
+        # Projection matrices
+        self.proj = {}
+        for ntype, dim in in_sizes.items():
+            self.proj[ntype] = nn.Linear(dim, proj_size)
+
+        # HAN Layers: node-attention and semantic-attention
         self.layers = nn.ModuleList()
-        self.layers.append(HANLayer(meta_paths, in_size, hidden_size, num_heads[0], dropout))
+        self.layers.append(HANLayer(meta_paths, proj_size, hidden_size, num_heads[0], dropout))
         for l in range(1, len(num_heads)):
             self.layers.append(HANLayer(meta_paths, hidden_size * num_heads[l-1],
                                         hidden_size, num_heads[l], dropout))
+        
+        # MLP
         self.predict = nn.Linear(hidden_size * num_heads[-1], out_size)
 
     def forward(self, g, h):
-        for gnn in self.layers:
-            h = gnn(g, h)
+        """
+        g: dgl graph.
+        h: dict mapping node types to feature matrices
+        """
+        # Step 1: pass through projection layers
+        h2 = []
+        for ntype, feat in h.items():
+            h2 += [self.proj[ntype](feat)]
+        h2 = torch.cat(h2)
 
+        # Step 2: pass through node attention + semantic attention
+        for gnn in self.layers:
+            h = gnn(g, h2)
+
+        # Step 3: pass through MLP
         return self.predict(h)
