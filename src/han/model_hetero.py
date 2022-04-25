@@ -131,7 +131,7 @@ class HAN(nn.Module):
 
         # Step 2: pass through node attention + semantic attention
         for gnn in self.layers:
-            h = gnn(g, h2)
+            h2 = gnn(g, h2)
 
         # Step 3: pass through MLP
-        return self.predict(h)
+        return self.predict(h2)

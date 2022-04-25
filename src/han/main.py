@@ -1,7 +1,8 @@
 import torch
 from sklearn.metrics import f1_score
+import numpy as np
 
-from utils import load_data, EarlyStopping
+from utils import load_data, EarlyStopping, load_mumin
 
 def score(logits, labels):
     _, indices = torch.max(logits, dim=1)
@@ -26,30 +27,37 @@ def evaluate(model, g, features, labels, mask, loss_func):
 def main(args):
     # If args['hetero'] is True, g would be a heterogeneous graph.
     # Otherwise, it will be a list of homogeneous graphs.
-    g, features, labels, num_classes, train_idx, val_idx, test_idx, train_mask, \
-    val_mask, test_mask = load_data(args['dataset'])
+    g, feat_dict, labels, num_classes, train_idx, val_idx, test_idx, train_mask, \
+    val_mask, test_mask, metapath_list = load_mumin(None)
 
     if hasattr(torch, 'BoolTensor'):
         train_mask = train_mask.bool()
         val_mask = val_mask.bool()
         test_mask = test_mask.bool()
 
-    features = features.to(args['device'])
+    for ntype in feat_dict:
+        feat_dict[ntype] = feat_dict[ntype].to(args['device'])
     labels = labels.to(args['device'])
     train_mask = train_mask.to(args['device'])
     val_mask = val_mask.to(args['device'])
     test_mask = test_mask.to(args['device'])
 
+    dims = {ntype: g.nodes[ntype].data['feat'].shape[-1]
+            for ntype in g.ntypes}
+    print(dims)
+
     if args['hetero']:
         from model_hetero import HAN
-        model = HAN(meta_paths=[['pa', 'ap'], ['pf', 'fp']],
-                    in_size=features.shape[1],
+        model = HAN(metapath_list,
+                    in_sizes=dims,
+                    proj_size=args['proj_size'],
                     hidden_size=args['hidden_units'],
                     out_size=num_classes,
                     num_heads=args['num_heads'],
                     dropout=args['dropout']).to(args['device'])
         g = g.to(args['device'])
     else:
+        # this is irrelevant
         from model import HAN
         model = HAN(num_meta_paths=len(g),
                     in_size=features.shape[1],
@@ -66,7 +74,7 @@ def main(args):
 
     for epoch in range(args['num_epochs']):
         model.train()
-        logits = model(g, features)
+        logits = model(g, feat_dict)
         loss = loss_fcn(logits[train_mask], labels[train_mask])
 
         optimizer.zero_grad()
@@ -74,7 +82,7 @@ def main(args):
         optimizer.step()
 
         train_acc, train_micro_f1, train_macro_f1 = score(logits[train_mask], labels[train_mask])
-        val_loss, val_acc, val_micro_f1, val_macro_f1 = evaluate(model, g, features, labels, val_mask, loss_fcn)
+        val_loss, val_acc, val_micro_f1, val_macro_f1 = evaluate(model, g, feat_dict['claim'], labels, val_mask, loss_fcn)
         early_stop = stopper.step(val_loss.data.item(), val_acc, model)
 
         print('Epoch {:d} | Train Loss {:.4f} | Train Micro f1 {:.4f} | Train Macro f1 {:.4f} | '
@@ -85,7 +93,7 @@ def main(args):
             break
 
     stopper.load_checkpoint(model)
-    test_loss, test_acc, test_micro_f1, test_macro_f1 = evaluate(model, g, features, labels, test_mask, loss_fcn)
+    test_loss, test_acc, test_micro_f1, test_macro_f1 = evaluate(model, g, feat_dict['claim'], labels, test_mask, loss_fcn)
     print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f}'.format(
         test_loss.item(), test_micro_f1, test_macro_f1))
 
@@ -104,5 +112,11 @@ if __name__ == '__main__':
     args = parser.parse_args().__dict__
 
     args = setup(args)
+    args['proj_size'] = 768
+    args['hidden_units'] = 512
+    args['dropout'] = 0.4
+    args['dataset'] = 'mumin_small'
+    args['lr'] = 0.01
+    print(args)
 
     main(args)

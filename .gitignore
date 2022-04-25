@@ -3,3 +3,4 @@
 data/*/*.pickle
 *.bin
 *.zip
+src/han/__pycache__/*

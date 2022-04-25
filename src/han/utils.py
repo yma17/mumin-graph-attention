@@ -6,6 +6,8 @@ import os
 import pickle
 import random
 import torch
+import torch.utils.data as D
+
 
 from dgl.data.utils import download, get_download_dir, _get_dgl_url
 from mumin import load_dgl_graph, save_dgl_graph
@@ -221,7 +223,7 @@ def load_acm_raw(remove_self_loop):
             train_mask, val_mask, test_mask
 
 def load_mumin(remove_self_loop):
-    graph = load_dgl_graph('/srv/share/aagarwal437/mumin-graph-attention/dgl-graph-small.bin')
+    graph = load_dgl_graph('../train/scripts/dgl-graph-small.bin')
     print("Claim feature shape", graph.nodes['claim'].data['feat'].shape)
 
     feat_dict = {}
@@ -236,17 +238,22 @@ def load_mumin(remove_self_loop):
                 ['user', 'tweet', 'claim']]
 
     num_classes = 2
-   
+
+    labels = graph.nodes['claim'].data['label']
+
     train_mask = graph.nodes['claim'].data['train_mask'].bool()
     val_mask = graph.nodes['claim'].data['val_mask'].bool()
     test_mask = graph.nodes['claim'].data['test_mask'].bool()
 
-    # train_nids = {task: node_enum[train_mask].int()}
-    # val_nids = {task: node_enum[val_mask].int()}
-    # test_nids = {task: node_enum[test_mask].int()}
+    # Enumerate the nodes with the labels, for performing train/val/test splits
+    node_enum = torch.arange(graph.num_nodes('claim'))
+
+    train_idx = node_enum[train_mask].int()
+    val_idx = node_enum[val_mask].int()
+    test_idx = node_enum[test_mask].int()
 
     return graph, feat_dict, labels, num_classes, train_idx, val_idx, test_idx, \
-            train_mask, val_mask, test_mask
+            train_mask, val_mask, test_mask, metapath_list
 
 def load_data(dataset, remove_self_loop=False):
     if dataset == 'ACM':
@@ -294,3 +301,5 @@ class EarlyStopping(object):
     def load_checkpoint(self, model):
         """Load the latest checkpoint."""
         model.load_state_dict(torch.load(self.filename))
+
+load_mumin(1)
