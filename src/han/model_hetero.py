@@ -95,10 +95,9 @@ class HANLayer(nn.Module):
         # Step 1: node-level attention via GAT
         for i, meta_path in enumerate(self.meta_paths):
             new_g = self._cached_coalesced_graph[meta_path]
-            end_node = meta_path[0][0]
             # concatenation of results from all attention heads
             semantic_embeddings.append(self.gat_layers[i](
-                new_g, h[end_node]).flatten(1))
+                new_g, h.float()).flatten(1))
             # SIMPLIFICATION: only compute attention for pairs
             #   (new_g x new_g), instead of (g x new_g)
             # this is due to limitations with the architecture
@@ -121,10 +120,10 @@ class HAN(nn.Module):
         
         super(HAN, self).__init__()
 
-        # Projection matrices
-        self.proj = {}
-        for ntype, dim in in_sizes.items():
-            self.proj[ntype] = nn.Linear(dim, proj_size)
+        # # Projection matrices
+        # self.proj = {}
+        # for ntype, dim in in_sizes.items():
+        #     self.proj[ntype] = nn.Linear(dim, proj_size)
 
         # HAN Layers: node-attention and semantic-attention
         self.layers = nn.ModuleList()
@@ -136,19 +135,21 @@ class HAN(nn.Module):
         # MLP
         self.predict = nn.Linear(hidden_size * num_heads[-1], out_size)
 
-    def forward(self, g, h):
+    def forward(self, g, h, pred_ntype):
         """
         g: dgl graph.
         h: dict mapping node types to feature matrices
         """
-        # Step 1: pass through projection layers
-        proj_out = {}
-        for ntype, feat in h.items():
-            proj_out[ntype] = self.proj[ntype](feat.float())
+        # # Step 1: pass through projection layers
+        # proj_out = {}
+        # for ntype, feat in h.items():
+        #     proj_out[ntype] = self.proj[ntype](feat.float())
 
         # Step 2: pass through node attention + semantic attention
+        h2 = h[pred_ntype]
         for gnn in self.layers:
-            proj_out = gnn(g, proj_out)
+            h2 = gnn(g, h2)
+            #proj_out = gnn(g, proj_out)
 
         # Step 3: pass through MLP
         return self.predict(h2)

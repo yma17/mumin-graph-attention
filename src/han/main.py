@@ -17,7 +17,7 @@ def score(logits, labels):
 def evaluate(model, g, features, labels, mask, loss_func):
     model.eval()
     with torch.no_grad():
-        logits = model(g, features)
+        logits = model(g, features, 'claim')
     loss = loss_func(logits[mask], labels[mask])
     accuracy, micro_f1, macro_f1 = score(logits[mask], labels[mask])
 
@@ -72,7 +72,7 @@ def main(args):
 
     for epoch in range(args['num_epochs']):
         model.train()
-        logits = model(g, feat_dict)
+        logits = model(g, feat_dict, 'claim')
         loss = loss_fcn(logits[train_mask], labels[train_mask])
 
         optimizer.zero_grad()
@@ -89,9 +89,6 @@ def main(args):
 
         if early_stop:
             break
-
-        print("made it this far")
-        exit(1)
 
     stopper.load_checkpoint(model)
     test_loss, test_acc, test_micro_f1, test_macro_f1 = evaluate(model, g, feat_dict, labels, test_mask, loss_fcn)
@@ -113,8 +110,9 @@ if __name__ == '__main__':
     args = parser.parse_args().__dict__
 
     args = setup(args)
-    args['proj_size'] = 768
+    args['proj_size'] = 870  # 'claim'
     args['hidden_units'] = 512
+    args['num_epochs'] = 50
     args['dropout'] = 0.4
     args['dataset'] = 'mumin_small'
     args['lr'] = 0.01
