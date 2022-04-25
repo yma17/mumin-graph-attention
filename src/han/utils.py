@@ -228,14 +228,39 @@ def load_mumin(remove_self_loop):
 
     feat_dict = {}
 
-    node_types = ['article', 'claim', 'hashtag', 'image', 'reply', 'tweet', 'user']
+    # don't use images during training
+    # exclude hashtags since embeddings are useless
+    node_types = ['article', 'claim', 'reply', 'tweet', 'user']
+    # x = graph.etypes
+    # x.sort()
+    # print(x)
 
     for node_type in node_types:
         feat_dict[node_type] = graph.nodes[node_type].data['feat']
 
-    metapath_list = [['tweet', 'claim', 'tweet'], ['tweet', 'hashtag', 'tweet'], ['user', 'hashtag', 'user'], 
-                ['reply', 'tweet', 'claim'], ['article', 'tweet', 'claim'], ['user', 'tweet', 'user'], ['tweet', 'user', 'tweet'],
-                ['user', 'tweet', 'claim']]
+    metapath_list = [
+        # two claims were posted by the same user
+        [
+            ('claim', 'discusses_inv', 'tweet'),
+            ('tweet', 'posted_inv', 'user'),
+            ('user', 'posted', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+        # two claims were retweeted by the same user
+        [
+            ('claim', 'discusses_inv', 'tweet'),
+            ('tweet', 'retweeted_inv', 'user'),
+            ('user', 'retweeted', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+        # two claims are referenced by the same article
+        [
+            ('claim', 'discusses_inv', 'tweet'),
+            ('tweet', 'has_article', 'article'),
+            ('article', 'has_article_inv', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+    ]
 
     num_classes = 2
 

@@ -1,6 +1,5 @@
 import torch
 from sklearn.metrics import f1_score
-import numpy as np
 
 from utils import load_data, EarlyStopping, load_mumin
 
@@ -42,8 +41,7 @@ def main(args):
     val_mask = val_mask.to(args['device'])
     test_mask = test_mask.to(args['device'])
 
-    dims = {ntype: g.nodes[ntype].data['feat'].shape[-1]
-            for ntype in g.ntypes}
+    dims = {ntype: feat_dict[ntype].shape[-1] for ntype in feat_dict}
     print(dims)
 
     if args['hetero']:
@@ -57,7 +55,7 @@ def main(args):
                     dropout=args['dropout']).to(args['device'])
         g = g.to(args['device'])
     else:
-        # this is irrelevant
+        # this is irrelevant for this project
         from model import HAN
         model = HAN(num_meta_paths=len(g),
                     in_size=features.shape[1],
@@ -82,7 +80,7 @@ def main(args):
         optimizer.step()
 
         train_acc, train_micro_f1, train_macro_f1 = score(logits[train_mask], labels[train_mask])
-        val_loss, val_acc, val_micro_f1, val_macro_f1 = evaluate(model, g, feat_dict['claim'], labels, val_mask, loss_fcn)
+        val_loss, val_acc, val_micro_f1, val_macro_f1 = evaluate(model, g, feat_dict, labels, val_mask, loss_fcn)
         early_stop = stopper.step(val_loss.data.item(), val_acc, model)
 
         print('Epoch {:d} | Train Loss {:.4f} | Train Micro f1 {:.4f} | Train Macro f1 {:.4f} | '
@@ -92,8 +90,11 @@ def main(args):
         if early_stop:
             break
 
+        print("made it this far")
+        exit(1)
+
     stopper.load_checkpoint(model)
-    test_loss, test_acc, test_micro_f1, test_macro_f1 = evaluate(model, g, feat_dict['claim'], labels, test_mask, loss_fcn)
+    test_loss, test_acc, test_micro_f1, test_macro_f1 = evaluate(model, g, feat_dict, labels, test_mask, loss_fcn)
     print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f}'.format(
         test_loss.item(), test_micro_f1, test_macro_f1))
 
@@ -117,6 +118,7 @@ if __name__ == '__main__':
     args['dropout'] = 0.4
     args['dataset'] = 'mumin_small'
     args['lr'] = 0.01
+    args['hetero'] = True
     print(args)
 
     main(args)
