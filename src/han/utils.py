@@ -237,47 +237,70 @@ def load_mumin(remove_self_loop):
         feat_dict[node_type] = graph.nodes[node_type].data['feat']
 
     metapath_list = [
-        # which articles have discussed a claim
-        [
-            ('article', 'has_article_inv', 'tweet'),
-            ('tweet', 'discusses', 'claim')
-        ],
-        # which replies have discussed a claim
-        [
-            ('reply', 'reply_to', 'tweet'),
-            ('tweet', 'discusses', 'claim')
-        ],
-        # which users have posted a claim
-        [
-            ('user', 'posted', 'tweet'),
-            ('tweet', 'discusses', 'claim')
-        ],
-        # which users have retweeted a claim
-        [
-            ('user', 'retweeted', 'tweet'),
-            ('tweet', 'discusses', 'claim')
-        ],
-        # # which users have discussed a claim
+        # # which articles have discussed a claim
         # [
-        #     ('claim', 'discusses_inv', 'tweet'),
-        #     ('tweet', 'posted_inv', 'user'),
-        #     ('user', 'posted', 'tweet'),
-        #     ('tweet', 'discusses', 'claim')
-        # ],
-        # # two claims were retweeted by the same user
-        # [
-        #     ('claim', 'discusses_inv', 'tweet'),
-        #     ('tweet', 'retweeted_inv', 'user'),
-        #     ('user', 'retweeted', 'tweet'),
-        #     ('tweet', 'discusses', 'claim')
-        # ],
-        # # two claims are referenced by the same article
-        # [
-        #     ('claim', 'discusses_inv', 'tweet'),
-        #     ('tweet', 'has_article', 'article'),
         #     ('article', 'has_article_inv', 'tweet'),
         #     ('tweet', 'discusses', 'claim')
         # ],
+        # # which users have posted to tweets discussing a claim
+        # [
+        #     ('user', 'posted', 'tweet'),
+        #     ('tweet', 'discusses', 'claim')
+        # ],
+        # # which users have retweeted to tweets discussing a claim
+        # [
+        #     ('user', 'retweeted', 'tweet'),
+        #     ('tweet', 'discusses', 'claim')
+        # ],
+        # # which users have replied to tweets discussing a claim
+        # [
+        #     ('user', 'posted', 'reply'),
+        #     ('reply', 'reply_to', 'tweet'),
+        #     ('tweet', 'discusses', 'claim')
+        # ],
+        # # which users follow users who have discussed a claim
+        # [
+        #     ('user', 'follows', 'user'),
+        #     ('user', 'posted', 'tweet'),
+        #     ('tweet', 'discusses', 'claim')
+        # ],
+        # two claims were posted by the same user
+        [
+            ('claim', 'discusses_inv', 'tweet'),
+            ('tweet', 'posted_inv', 'user'),
+            ('user', 'posted', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+        # two claims were retweeted by the same user
+        [
+            ('claim', 'discusses_inv', 'tweet'),
+            ('tweet', 'retweeted_inv', 'user'),
+            ('user', 'retweeted', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+        # two claims are referenced by the same article
+        [
+            ('claim', 'discusses_inv', 'tweet'),
+            ('tweet', 'has_article', 'article'),
+            ('article', 'has_article_inv', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+        # two claims are posted by users' followers
+        [
+            ('claim', 'discusses_inv', 'tweet'),
+            ('tweet', 'posted_inv', 'user'),
+            ('user', 'follows', 'user'),
+            ('user', 'posted', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+        # two claims - one by user, one by users' reply
+        [
+            ('claim', 'discusses_inv', 'tweet'),
+            ('tweet', 'reply_to_inv', 'reply'),
+            ('reply', 'posted_inv', 'user'),
+            ('user', 'posted', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
     ]
 
     num_classes = 2
