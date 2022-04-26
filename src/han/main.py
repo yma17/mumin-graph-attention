@@ -1,5 +1,5 @@
 import torch
-from sklearn.metrics import f1_score
+from sklearn.metrics import f1_score, precision_recall_fscore_support
 
 from utils import EarlyStopping, load_mumin
 
@@ -12,16 +12,20 @@ def score(logits, labels):
     micro_f1 = f1_score(labels, prediction, average='micro')
     macro_f1 = f1_score(labels, prediction, average='macro')
 
-    return accuracy, micro_f1, macro_f1
+    _, _, f1_per_class, _ = precision_recall_fscore_support(labels, prediction, average=None)
+    f1_negative = f1_per_class[1]
+    f1_positive = f1_per_class[0]
+
+    return accuracy, micro_f1, macro_f1, f1_negative, f1_positive
 
 def evaluate(model, g, features, labels, mask, loss_func):
     model.eval()
     with torch.no_grad():
         logits = model(g, features)
     loss = loss_func(logits[mask], labels[mask])
-    accuracy, micro_f1, macro_f1 = score(logits[mask], labels[mask])
+    accuracy, micro_f1, macro_f1, f1_negative, f1_positive = score(logits[mask], labels[mask])
 
-    return loss, accuracy, micro_f1, macro_f1
+    return loss, accuracy, micro_f1, macro_f1, f1_negative, f1_positive
 
 def main(args):
     # If args['hetero'] is True, g would be a heterogeneous graph.
@@ -82,21 +86,21 @@ def main(args):
         loss.backward()
         optimizer.step()
 
-        train_acc, train_micro_f1, train_macro_f1 = score(logits[train_mask], labels[train_mask])
-        val_loss, val_acc, val_micro_f1, val_macro_f1 = evaluate(model, g, feat_dict, labels, val_mask, loss_fcn)
+        train_acc, train_micro_f1, train_macro_f1, train_f1_neg, train_f1_pos = score(logits[train_mask], labels[train_mask])
+        val_loss, val_acc, val_micro_f1, val_macro_f1, val_f1_neg, val_f1_pos = evaluate(model, g, feat_dict, labels, val_mask, loss_fcn)
         early_stop = stopper.step(val_loss.data.item(), val_acc, model)
 
-        print('Epoch {:d} | Train Loss {:.4f} | Train Micro f1 {:.4f} | Train Macro f1 {:.4f} | '
-              'Val Loss {:.4f} | Val Micro f1 {:.4f} | Val Macro f1 {:.4f}'.format(
-            epoch + 1, loss.item(), train_micro_f1, train_macro_f1, val_loss.item(), val_micro_f1, val_macro_f1))
+        print('Epoch {:d} | Train Loss {:.4f} | Train Micro f1 {:.4f} | Train Macro f1 {:.4f} | Train f1 factual {:.4f} | Train f1 misinfo {:.4f} | '
+              'Val Loss {:.4f} | Val Micro f1 {:.4f} | Val Macro f1 {:.4f} | Val f1 factual {:.4f} | Val f1 misinfo {:.4f}'.format(
+            epoch + 1, loss.item(), train_micro_f1, train_macro_f1, train_f1_neg, train_f1_pos, val_loss.item(), val_micro_f1, val_macro_f1, val_f1_neg, val_f1_pos))
 
         if early_stop:
             break
 
     stopper.load_checkpoint(model)
-    test_loss, test_acc, test_micro_f1, test_macro_f1 = evaluate(model, g, feat_dict, labels, test_mask, loss_fcn)
-    print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f}'.format(
-        test_loss.item(), test_micro_f1, test_macro_f1))
+    test_loss, test_acc, test_micro_f1, test_macro_f1, test_f1_neg, test_f1_pos = evaluate(model, g, feat_dict, labels, test_mask, loss_fcn)
+    print('Test loss {:.4f} | Test Micro f1 {:.4f} | Test Macro f1 {:.4f} | Test f1 factual {:.4f} | Test f1 misinfo {:.4f}'.format(
+        test_loss.item(), test_micro_f1, test_macro_f1, test_f1_neg, test_f1_pos))
 
 if __name__ == '__main__':
     import argparse
