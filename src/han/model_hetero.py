@@ -63,12 +63,21 @@ class HANLayer(nn.Module):
 
         # One GAT layer for each meta path based adjacency matrix
         self.gat_layers = nn.ModuleList()
-        for i in range(len(meta_paths)):
-            self.gat_layers.append(GATConv(in_size, out_size, layer_num_heads,
-                                           dropout, dropout, activation=F.elu,
-                                           allow_zero_in_degree=True))
+        for meta_path in meta_paths:
+            path_startnode, path_endnode = meta_path[0][0], meta_path[-1][-1]
+            if path_startnode == path_endnode:
+                layer = GATConv(in_size, out_size, layer_num_heads,
+                                dropout, dropout, activation=F.elu,
+                                allow_zero_in_degree=True)
+            else:
+                layer = GATConv((in_size, in_size), out_size, layer_num_heads,
+                                dropout, dropout, activation=F.elu,
+                                allow_zero_in_degree=True)
+            self.gat_layers.append(layer)
+        
         self.semantic_attention = SemanticAttention(
             in_size=out_size * layer_num_heads, out_size=out_size)
+
         self.meta_paths = list(tuple(meta_path) for meta_path in meta_paths)
 
         self._cached_graph = None
@@ -84,20 +93,19 @@ class HANLayer(nn.Module):
                 self._cached_coalesced_graph[meta_path] = dgl.metapath_reachable_graph(
                         g, meta_path)
 
-        # # FOR TESTING
-        # for meta_path in self.meta_paths:
-        #     print(meta_path)
-        #     print(self._cached_coalesced_graph[meta_path].num_nodes)
-        #     print(h[meta_path[0][0]].shape)
-        #     print("\n\n")
-        # exit(1)
-
         # Step 1: node-level attention via GAT
         for i, meta_path in enumerate(self.meta_paths):
             new_g = self._cached_coalesced_graph[meta_path]
+            
             # concatenation of results from all attention heads
-            semantic_embeddings.append(self.gat_layers[i](
-                new_g, h.float()).flatten(1))
+            path_startnode, path_endnode = meta_path[0][0], meta_path[-1][-1]
+            if path_startnode == path_endnode:
+                semantic_embeddings.append(self.gat_layers[i](
+                    new_g, h[path_endnode]).flatten(1))
+            else:
+                semantic_embeddings.append(self.gat_layers[i](
+                    new_g, (h[path_startnode], h[path_endnode])).flatten(1))
+            
             # SIMPLIFICATION: only compute attention for pairs
             #   (new_g x new_g), instead of (g x new_g)
             # this is due to limitations with the architecture
@@ -107,10 +115,11 @@ class HANLayer(nn.Module):
         return self.semantic_attention(semantic_embeddings)                            # (N, D * K)
 
 class HAN(nn.Module):
-    def __init__(self, meta_paths, in_sizes, proj_size, hidden_size, out_size, num_heads, dropout):
+    def __init__(self, meta_paths, in_sizes, pred_ntype, proj_size, hidden_size, out_size, num_heads, dropout):
         """
         meta_paths: list of metapaths
         in_sizes: dictionary mapping node types to dimensionality
+        pred_ntype: name of node type for the task at hand
         proj_size: dimensionality of all nodes after projection
         hidden_size: dimensionality of semantic-specific node embedding
         out_size: dimensionality of output, typically number of classes
@@ -120,10 +129,17 @@ class HAN(nn.Module):
         
         super(HAN, self).__init__()
 
-        # # Projection matrices
-        # self.proj = {}
-        # for ntype, dim in in_sizes.items():
-        #     self.proj[ntype] = nn.Linear(dim, proj_size)
+        self.pred_ntype = pred_ntype
+
+        # Projection matrices
+        self.meta_paths = meta_paths
+        self.proj = {}
+        for meta_path in meta_paths:
+            ntypes = {meta_path[0][0], meta_path[-1][-1]}
+            for ntype in ntypes:
+                assert ntype in in_sizes.keys()
+                if ntype not in self.proj.keys():
+                    self.proj[ntype] = nn.Linear(in_sizes[ntype], proj_size)
 
         # HAN Layers: node-attention and semantic-attention
         self.layers = nn.ModuleList()
@@ -135,21 +151,19 @@ class HAN(nn.Module):
         # MLP
         self.predict = nn.Linear(hidden_size * num_heads[-1], out_size)
 
-    def forward(self, g, h, pred_ntype):
+    def forward(self, g, h):
         """
         g: dgl graph.
         h: dict mapping node types to feature matrices
         """
-        # # Step 1: pass through projection layers
-        # proj_out = {}
-        # for ntype, feat in h.items():
-        #     proj_out[ntype] = self.proj[ntype](feat.float())
+        # Step 1: pass through projection layers
+        h_proj = {}
+        for ntype in self.proj.keys():
+            h_proj[ntype] = self.proj[ntype](h[ntype].float())
 
         # Step 2: pass through node attention + semantic attention
-        h2 = h[pred_ntype]
         for gnn in self.layers:
-            h2 = gnn(g, h2)
-            #proj_out = gnn(g, proj_out)
+            h_proj[self.pred_ntype] = gnn(g, h_proj)
 
         # Step 3: pass through MLP
-        return self.predict(h2)
+        return self.predict(h_proj[self.pred_ntype])

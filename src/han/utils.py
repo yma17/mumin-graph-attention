@@ -6,11 +6,9 @@ import os
 import pickle
 import random
 import torch
-import torch.utils.data as D
-
 
 from dgl.data.utils import download, get_download_dir, _get_dgl_url
-from mumin import load_dgl_graph, save_dgl_graph
+from mumin import load_dgl_graph
 from pprint import pprint
 from scipy import sparse
 from scipy import io as sio
@@ -239,27 +237,47 @@ def load_mumin(remove_self_loop):
         feat_dict[node_type] = graph.nodes[node_type].data['feat']
 
     metapath_list = [
-        # two claims were posted by the same user
+        # which articles have discussed a claim
         [
-            ('claim', 'discusses_inv', 'tweet'),
-            ('tweet', 'posted_inv', 'user'),
-            ('user', 'posted', 'tweet'),
-            ('tweet', 'discusses', 'claim')
-        ],
-        # two claims were retweeted by the same user
-        [
-            ('claim', 'discusses_inv', 'tweet'),
-            ('tweet', 'retweeted_inv', 'user'),
-            ('user', 'retweeted', 'tweet'),
-            ('tweet', 'discusses', 'claim')
-        ],
-        # two claims are referenced by the same article
-        [
-            ('claim', 'discusses_inv', 'tweet'),
-            ('tweet', 'has_article', 'article'),
             ('article', 'has_article_inv', 'tweet'),
             ('tweet', 'discusses', 'claim')
         ],
+        # which replies have discussed a claim
+        [
+            ('reply', 'reply_to', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+        # which users have posted a claim
+        [
+            ('user', 'posted', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+        # which users have retweeted a claim
+        [
+            ('user', 'retweeted', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+        # # which users have discussed a claim
+        # [
+        #     ('claim', 'discusses_inv', 'tweet'),
+        #     ('tweet', 'posted_inv', 'user'),
+        #     ('user', 'posted', 'tweet'),
+        #     ('tweet', 'discusses', 'claim')
+        # ],
+        # # two claims were retweeted by the same user
+        # [
+        #     ('claim', 'discusses_inv', 'tweet'),
+        #     ('tweet', 'retweeted_inv', 'user'),
+        #     ('user', 'retweeted', 'tweet'),
+        #     ('tweet', 'discusses', 'claim')
+        # ],
+        # # two claims are referenced by the same article
+        # [
+        #     ('claim', 'discusses_inv', 'tweet'),
+        #     ('tweet', 'has_article', 'article'),
+        #     ('article', 'has_article_inv', 'tweet'),
+        #     ('tweet', 'discusses', 'claim')
+        # ],
     ]
 
     num_classes = 2

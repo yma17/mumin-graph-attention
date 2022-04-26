@@ -1,7 +1,7 @@
 import torch
 from sklearn.metrics import f1_score
 
-from utils import load_data, EarlyStopping, load_mumin
+from utils import EarlyStopping, load_mumin
 
 def score(logits, labels):
     _, indices = torch.max(logits, dim=1)
@@ -17,7 +17,7 @@ def score(logits, labels):
 def evaluate(model, g, features, labels, mask, loss_func):
     model.eval()
     with torch.no_grad():
-        logits = model(g, features, 'claim')
+        logits = model(g, features)
     loss = loss_func(logits[mask], labels[mask])
     accuracy, micro_f1, macro_f1 = score(logits[mask], labels[mask])
 
@@ -48,6 +48,7 @@ def main(args):
         from model_hetero import HAN
         model = HAN(metapath_list,
                     in_sizes=dims,
+                    pred_ntype=args['task'],
                     proj_size=args['proj_size'],
                     hidden_size=args['hidden_units'],
                     out_size=num_classes,
@@ -72,7 +73,7 @@ def main(args):
 
     for epoch in range(args['num_epochs']):
         model.train()
-        logits = model(g, feat_dict, 'claim')
+        logits = model(g, feat_dict)
         loss = loss_fcn(logits[train_mask], labels[train_mask])
 
         optimizer.zero_grad()
@@ -110,13 +111,14 @@ if __name__ == '__main__':
     args = parser.parse_args().__dict__
 
     args = setup(args)
-    args['proj_size'] = 870  # 'claim'
+    args['proj_size'] = 512  # 'claim'
     args['hidden_units'] = 512
-    args['num_epochs'] = 50
+    args['num_epochs'] = 100
     args['dropout'] = 0.4
     args['dataset'] = 'mumin_small'
     args['lr'] = 0.01
     args['hetero'] = True
+    args['task'] = 'claim'
     print(args)
 
     main(args)
