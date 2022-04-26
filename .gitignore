@@ -5,3 +5,4 @@ data/*/*.pickle
 *.zip
 src/han/__pycache__/*
 *.pth
+*.pyc
