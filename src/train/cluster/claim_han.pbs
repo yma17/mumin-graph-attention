@@ -9,8 +9,8 @@
 #PBS -M yma473@gatech.edu               # email to send notifications to
 
 cd $PBS_O_WORKDIR                       # enter directory where PBS Script is
-cd ../../han/main.py
+cd ../../han/
 module load anaconda3/2021.05           # loads python environment (anaconda)
 module load cuda/10.2
 conda activate mumin_env
-python claim_classification.py --model hgs --size small                # runs parallel python script  
+python main.py                # runs parallel python script  

@@ -66,6 +66,8 @@ def main(args):
                     dropout=args['dropout']).to(args['device'])
         g = [graph.to(args['device']) for graph in g]
 
+    model.move_dict_tensors_to_gpu(args['device'])
+
     stopper = EarlyStopping(patience=args['patience'])
     loss_fcn = torch.nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(model.parameters(), lr=args['lr'],

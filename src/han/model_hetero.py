@@ -29,7 +29,7 @@ class SemanticAttention(nn.Module):
         w = torch.concat([self.project(z).mean(0) for z in z_list])     # (M, 1)
         beta = torch.softmax(w, dim=0)                 # (M, 1)
 
-        z_final = torch.zeros(z_list[0].shape[0], z_list[0].shape[1])
+        z_final = torch.zeros(z_list[0].shape[0], z_list[0].shape[1]).to(beta.device)
         for i, z in enumerate(z_list):
             z_final += beta[i] * z
         return z_final
@@ -150,6 +150,10 @@ class HAN(nn.Module):
         
         # MLP
         self.predict = nn.Linear(hidden_size * num_heads[-1], out_size)
+
+    def move_dict_tensors_to_gpu(self, device):
+        for k in self.proj.keys():
+            self.proj[k] = self.proj[k].to(device)
 
     def forward(self, g, h):
         """
