@@ -2,10 +2,18 @@
 
 import os
 import sys
+
 curr_path = os.path.dirname(os.path.abspath(__file__))
-model_path = os.path.join(curr_path, '../../mumin-baseline/src/')
-print(model_path)
-sys.path.append(model_path)
+# Add paths to all model scripts
+# TODO: add GS path
+
+hgs_path = os.path.join(curr_path, '../mumin-baseline/src/')
+sys.path.append(hgs_path)
+
+# TODO: add HAN path
+
+magnn_path = os.path.join(curr_path, '../MAGNN/')
+sys.path.append(magnn_path)
 
 import argparse
 from train_graph_model import train_graph_model
@@ -18,13 +26,18 @@ logging.basicConfig(level=logging.INFO, format=fmt)
 logger = logging.getLogger(__name__)
 
 
-def claim_classification(model, size):
-    assert model in ["hgs", "han"]
+def claim_classification(task, model, size):
+    assert task in ["claim", "tweet"]
+    assert model in ["gs", "hgs", "han", "magnn"]
     assert size in ["small", "medium", "large"]
 
-    if model == "hgs":
-        scores = train_graph_model(task='claim', size=size)
-    else:  # model == "han"
+    if model == "gs":
+        pass  # TODO
+    elif model == "hgs":
+        scores = train_graph_model(task=task, size=size)
+    elif model == "han":
+        pass  # TODO
+    elif model == "magnn":
         pass  # TODO
 
     # Report statistics
@@ -35,12 +48,10 @@ def claim_classification(model, size):
             log += f'> {statistic}: {value}\n'
     logger.info(log)
 
-    # Write results to file
-    # TODO
-
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
+    parser.add_argument('--task')  # required argument
     parser.add_argument('--model')  # required argument
     parser.add_argument('--size')  # required argument
     args = parser.parse_args()

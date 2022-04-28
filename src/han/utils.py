@@ -227,8 +227,7 @@ def load_mumin(remove_self_loop):
     feat_dict = {}
 
     # don't use images during training
-    # exclude hashtags since embeddings are useless
-    node_types = ['article', 'claim', 'reply', 'tweet', 'user']
+    node_types = ['article', 'claim', 'reply', 'tweet', 'user', 'hashtag']
     # x = graph.etypes
     # x.sort()
     # print(x)
@@ -264,6 +263,18 @@ def load_mumin(remove_self_loop):
         #     ('user', 'posted', 'tweet'),
         #     ('tweet', 'discusses', 'claim')
         # ],
+        # two claims were discussed by the same tweet
+        [
+            ('claim', 'discusses_inv', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
+        # two claims have the same hashtag
+        [
+            ('claim', 'discusses_inv', 'tweet'),
+            ('tweet', 'has_hashtag', 'hashtag'),
+            ('hashtag', 'has_hashtag_inv', 'tweet'),
+            ('tweet', 'discusses', 'claim')
+        ],
         # two claims were posted by the same user
         [
             ('claim', 'discusses_inv', 'tweet'),

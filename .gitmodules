@@ -1,3 +1,6 @@
 [submodule "src/mumin-baseline"]
 	path = src/mumin-baseline
 	url = git@github.com:MuMiN-dataset/mumin-baseline.git
+[submodule "src/MAGNN"]
+	path = src/MAGNN
+	url = git@github.com:cynricfu/MAGNN.git

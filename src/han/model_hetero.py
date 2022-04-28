@@ -92,6 +92,11 @@ class HANLayer(nn.Module):
             for meta_path in self.meta_paths:
                 self._cached_coalesced_graph[meta_path] = dgl.metapath_reachable_graph(
                         g, meta_path)
+                print(meta_path)
+                print(self._cached_coalesced_graph[meta_path].num_nodes())
+                print(self._cached_coalesced_graph[meta_path].num_src_nodes())
+                print(self._cached_coalesced_graph[meta_path].num_dst_nodes())
+                print(self._cached_coalesced_graph[meta_path].num_edges())
 
         # Step 1: node-level attention via GAT
         for i, meta_path in enumerate(self.meta_paths):
